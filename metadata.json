@@ -1,0 +1,10 @@
+{
+  "name": "TradeFlow Journal",
+  "description": "A premium, mobile-friendly trading journal with advanced analytics, streak tracking, and PnL calendar.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "Trading Journal",
+    "PnL Analytics",
+    "Performance Tracking"
+  ]
+}
