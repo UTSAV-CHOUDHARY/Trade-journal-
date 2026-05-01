@@ -1,69 +1,179 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Trade } from '../types';
 import { calculatePnL, calculateRR } from '../utils';
+import { db, auth } from '../lib/firebase';
+import { 
+  collection, 
+  onSnapshot, 
+  query, 
+  where, 
+  doc, 
+  setDoc, 
+  updateDoc, 
+  deleteDoc, 
+  serverTimestamp,
+  orderBy
+} from 'firebase/firestore';
+import { useAuth } from './AuthContext';
+
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: any;
+}
+
+const handleFirestoreError = (error: unknown, operationType: OperationType, path: string | null) => {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth.currentUser?.uid,
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+    },
+    operationType,
+    path
+  };
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+};
 
 interface TradeContextType {
   trades: Trade[];
-  addTrade: (trade: Omit<Trade, 'id' | 'pnl' | 'rr'>) => void;
-  deleteTrade: (id: string) => void;
-  updateTrade: (id: string, trade: Partial<Trade>) => void;
+  monthlyGoal: number;
+  addTrade: (trade: Omit<Trade, 'id' | 'pnl' | 'rr'>) => Promise<void>;
+  deleteTrade: (id: string) => Promise<void>;
+  updateTrade: (id: string, trade: Partial<Trade>) => Promise<void>;
+  setMonthlyGoal: (goal: number) => Promise<void>;
+  loading: boolean;
 }
 
 const TradeContext = createContext<TradeContextType | undefined>(undefined);
 
 export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [trades, setTrades] = useState<Trade[]>([]);
+  const [monthlyGoal, setMonthlyGoalLocal] = useState<number>(100000);
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
 
   useEffect(() => {
-    const saved = localStorage.getItem('tradeflow_trades');
-    if (saved) {
-      try {
-        setTrades(JSON.parse(saved));
-      } catch (e) {
-        console.error('Failed to parse trades', e);
+    if (!user) {
+      setTrades([]);
+      setMonthlyGoalLocal(100000);
+      setLoading(false);
+      return;
+    }
+
+    // Fetch monthly goal
+    const settingsPath = 'settings';
+    const settingsUnsubscribe = onSnapshot(doc(db, settingsPath, user.uid), (doc) => {
+      if (doc.exists()) {
+        setMonthlyGoalLocal(doc.data().monthlyGoal || 100000);
       }
-    }
-  }, []);
+    }, (error) => {
+      console.warn('Failed to fetch settings, using default goal', error);
+    });
 
-  useEffect(() => {
-    if (trades.length > 0) {
-      localStorage.setItem('tradeflow_trades', JSON.stringify(trades));
-    }
-  }, [trades]);
+    const path = 'trades';
+    const q = query(
+      collection(db, path),
+      where('userId', '==', user.uid),
+      orderBy('date', 'desc')
+    );
 
-  const addTrade = (tradeData: Omit<Trade, 'id' | 'pnl' | 'rr'>) => {
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const tradeList: Trade[] = [];
+      snapshot.forEach((doc) => {
+        tradeList.push({ id: doc.id, ...doc.data() } as Trade);
+      });
+      setTrades(tradeList);
+      setLoading(false);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, path);
+    });
+
+    return () => {
+      unsubscribe();
+      settingsUnsubscribe();
+    };
+  }, [user]);
+
+  const setMonthlyGoal = async (goal: number) => {
+    if (!user) return;
+    const path = `settings/${user.uid}`;
+    try {
+      await setDoc(doc(db, 'settings', user.uid), {
+        monthlyGoal: goal,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, path);
+    }
+  };
+
+  const addTrade = async (tradeData: Omit<Trade, 'id' | 'pnl' | 'rr'>) => {
+    if (!user) return;
+
+    const path = 'trades';
+    const id = crypto.randomUUID();
     const pnl = calculatePnL(tradeData.entry, tradeData.exit, tradeData.lotSize, tradeData.type);
     const rr = calculateRR(tradeData.entry, tradeData.sl, tradeData.tp);
     
-    const newTrade: Trade = {
-      ...tradeData,
-      id: crypto.randomUUID(),
-      pnl,
-      rr
-    };
-    
-    setTrades(prev => [newTrade, ...prev]);
+    try {
+      await setDoc(doc(db, path, id), {
+        ...tradeData,
+        userId: user.uid,
+        pnl,
+        rr,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, `${path}/${id}`);
+    }
   };
 
-  const deleteTrade = (id: string) => {
-    setTrades(prev => prev.filter(t => t.id !== id));
+  const deleteTrade = async (id: string) => {
+    const path = `trades/${id}`;
+    try {
+      await deleteDoc(doc(db, 'trades', id));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, path);
+    }
   };
 
-  const updateTrade = (id: string, updatedFields: Partial<Trade>) => {
-    setTrades(prev => prev.map(t => {
-      if (t.id === id) {
-        const merged = { ...t, ...updatedFields };
-        // Recalculate pnl and rr if core values changed
-        const pnl = calculatePnL(merged.entry, merged.exit, merged.lotSize, merged.type);
-        const rr = calculateRR(merged.entry, merged.sl, merged.tp);
-        return { ...merged, pnl, rr };
-      }
-      return t;
-    }));
+  const updateTrade = async (id: string, updatedFields: Partial<Trade>) => {
+    const path = `trades/${id}`;
+    const trade = trades.find(t => t.id === id);
+    if (!trade) return;
+
+    const merged = { ...trade, ...updatedFields };
+    const pnl = calculatePnL(merged.entry, merged.exit, merged.lotSize, merged.type);
+    const rr = calculateRR(merged.entry, merged.sl, merged.tp);
+
+    try {
+      await updateDoc(doc(db, 'trades', id), {
+        ...updatedFields,
+        pnl,
+        rr,
+        updatedAt: serverTimestamp()
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, path);
+    }
   };
 
   return (
-    <TradeContext.Provider value={{ trades, addTrade, deleteTrade, updateTrade }}>
+    <TradeContext.Provider value={{ trades, monthlyGoal, addTrade, deleteTrade, updateTrade, setMonthlyGoal, loading }}>
       {children}
     </TradeContext.Provider>
   );

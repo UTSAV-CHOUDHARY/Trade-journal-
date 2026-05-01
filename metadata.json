@@ -1,10 +1,11 @@
 {
-  "name": "TradeFlow Journal",
-  "description": "A premium, mobile-friendly trading journal with advanced analytics, streak tracking, and PnL calendar.",
+  "name": "Trading Journal India",
+  "description": "Premium trading journal for the Indian market. Track F&O, stocks, and commodities with advanced analytics.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "Trading Journal",
     "PnL Analytics",
-    "Performance Tracking"
+    "Performance Tracking",
+    "Indian Market Focus"
   ]
 }

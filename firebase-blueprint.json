@@ -1,0 +1,54 @@
+{
+  "entities": {
+    "Trade": {
+      "title": "Trade",
+      "description": "A trading session record",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "date": { "type": "string" },
+        "entryTime": { "type": "string" },
+        "exitTime": { "type": "string" },
+        "entry": { "type": "number" },
+        "exit": { "type": "number" },
+        "sl": { "type": "number" },
+        "tp": { "type": "number" },
+        "lotSize": { "type": "number" },
+        "type": { "type": "string", "enum": ["Buy", "Sell"] },
+        "strategy": { "type": "string" },
+        "index": { "type": "string" },
+        "mood": { "type": "string" },
+        "mistakes": { "type": "array", "items": { "type": "string" } },
+        "entryCondition": { "type": "string" },
+        "exitCondition": { "type": "string" },
+        "notes": { "type": "string" },
+        "pnl": { "type": "number" },
+        "rr": { "type": "number" },
+        "screenshot": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "date", "entry", "exit", "lotSize", "type", "strategy", "index", "pnl", "createdAt"]
+    },
+    "Settings": {
+      "title": "User Settings",
+      "description": "User configuration and targets",
+      "type": "object",
+      "properties": {
+        "monthlyGoal": { "type": "number" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["monthlyGoal", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/trades/{tradeId}": {
+      "schema": "Trade",
+      "description": "Collection of all trading sessions"
+    },
+    "/settings/{userId}": {
+      "schema": "Settings",
+      "description": "User specific configuration"
+    }
+  }
+}

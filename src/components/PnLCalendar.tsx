@@ -44,7 +44,7 @@ export const PnLCalendar = ({ onEdit }: { onEdit: (trade: Trade) => void }) => {
   return (
     <div className="space-y-6 pb-24 px-2">
       <header>
-        <h1 className="text-3xl font-black text-white tracking-tighter text-center uppercase">Time Ledger</h1>
+        <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter text-center uppercase italic">Time Ledger <span className="text-indigo-500 not-italic">India</span></h1>
         <p className="text-slate-500 font-bold text-xs uppercase tracking-widest text-center">Monthly Distribution</p>
       </header>
 
@@ -69,11 +69,11 @@ export const PnLCalendar = ({ onEdit }: { onEdit: (trade: Trade) => void }) => {
       </GlassCard>
 
       <div className="flex items-center justify-between px-2">
-         <button onClick={prevMonth} className="p-3 bg-slate-900 border border-white/5 rounded-2xl text-slate-400 hover:text-white transition-colors">
+         <button onClick={prevMonth} className="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 rounded-2xl text-slate-400 hover:text-indigo-500 transition-colors shadow-sm">
             <ChevronLeft size={20} />
          </button>
-         <h2 className="text-white font-black text-lg uppercase tracking-tighter">{format(currentDate, 'MMMM yyyy')}</h2>
-         <button onClick={nextMonth} className="p-3 bg-slate-900 border border-white/5 rounded-2xl text-slate-400 hover:text-white transition-colors">
+         <h2 className="text-slate-900 dark:text-white font-black text-lg uppercase tracking-tighter">{format(currentDate, 'MMMM yyyy')}</h2>
+         <button onClick={nextMonth} className="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 rounded-2xl text-slate-400 hover:text-indigo-500 transition-colors shadow-sm">
             <ChevronRight size={20} />
          </button>
       </div>
@@ -97,8 +97,8 @@ export const PnLCalendar = ({ onEdit }: { onEdit: (trade: Trade) => void }) => {
                 isSelected 
                   ? "bg-indigo-500 border-indigo-400 scale-105 z-10 shadow-xl shadow-indigo-500/30" 
                   : isToday(day) 
-                    ? "bg-white/10 border-white/30" 
-                    : "bg-slate-900/40 border-white/5",
+                    ? "bg-indigo-500/10 border-indigo-500/30" 
+                    : "bg-white dark:bg-slate-900/40 border-slate-200 dark:border-white/5",
                 tradesCount > 0 && pnl > 0 && !isSelected && "bg-emerald-500/10 border-emerald-500/20",
                 tradesCount > 0 && pnl < 0 && !isSelected && "bg-rose-500/10 border-rose-500/20",
               )}
@@ -145,7 +145,7 @@ export const PnLCalendar = ({ onEdit }: { onEdit: (trade: Trade) => void }) => {
                
                <div className="space-y-3">
                  {selectedDayTrades.map(trade => (
-                   <div key={trade.id} className="group flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5 hover:bg-white/10 transition-all active:scale-[0.98]">
+                   <div key={trade.id} className="group flex items-center justify-between p-4 bg-slate-500/5 dark:bg-white/5 rounded-2xl border border-slate-200 dark:border-white/5 hover:bg-slate-500/10 dark:hover:bg-white/10 transition-all active:scale-[0.98]">
                       <div className="flex items-center gap-3">
                         <div className={cn(
                           "w-10 h-10 rounded-xl flex items-center justify-center",
@@ -154,7 +154,7 @@ export const PnLCalendar = ({ onEdit }: { onEdit: (trade: Trade) => void }) => {
                           {trade.type === 'Buy' ? <TrendingUp size={18} /> : <TrendingDown size={18} />}
                         </div>
                         <div className="flex flex-col">
-                           <span className="text-white text-[11px] font-black uppercase leading-none mb-1 tracking-tighter">{trade.strategy}</span>
+                           <span className="text-slate-900 dark:text-white text-[11px] font-black uppercase leading-none mb-1 tracking-tighter">{trade.strategy}</span>
                            <span className="text-slate-500 text-[9px] font-black uppercase tracking-widest">{trade.index}</span>
                         </div>
                       </div>

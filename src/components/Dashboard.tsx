@@ -43,26 +43,26 @@ export const Dashboard = () => {
     <div className="space-y-6 pb-24 px-2">
       <header className="flex justify-between items-end">
         <div>
-          <h1 className="text-4xl font-black text-white tracking-tighter uppercase leading-none">Terminal</h1>
+          <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter uppercase leading-none italic">Trading Journal India</h1>
           <p className="text-slate-500 font-bold text-[10px] uppercase tracking-[0.3em] mt-1">Operational Overview</p>
         </div>
         <div className={cn(
            "flex items-center gap-3 px-4 py-3 rounded-2xl shadow-2xl border transition-all duration-500",
-           winRate < 30 ? "bg-rose-500/20 border-rose-500/30 ring-4 ring-rose-500/5" : "bg-slate-900 border-white/5"
+           winRate < 30 ? "bg-rose-500/20 border-rose-500/30 ring-4 ring-rose-500/5" : "bg-white dark:bg-slate-900 border-slate-200 dark:border-white/5"
         )}>
           <span className="text-2xl filter drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]">{level.icon}</span>
           <div className="flex flex-col">
             <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">Combat Rank</span>
             <span className={cn(
               "text-[11px] font-black uppercase tracking-tighter",
-              winRate < 30 ? "text-rose-400 animate-pulse" : "text-white"
+              winRate < 30 ? "text-rose-400 animate-pulse" : "text-slate-900 dark:text-white"
             )}>{level.name}</span>
           </div>
         </div>
       </header>
 
       {/* Primary Balance Card */}
-      <GlassCard className="relative overflow-hidden bg-slate-900/40 border border-white/10 p-6">
+      <GlassCard delay={0.1} className="relative overflow-hidden bg-white/80 dark:bg-slate-900/40 border border-slate-200 dark:border-white/10 p-6">
         <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-500/5 blur-[100px] -mr-24 -mt-24 rounded-full" />
         
         <div className="flex justify-between items-start relative z-10">
@@ -98,26 +98,26 @@ export const Dashboard = () => {
         </div>
 
         <div className="grid grid-cols-3 gap-2 mt-8">
-           <div className="bg-white/5 rounded-2xl p-3 border border-white/5">
+           <div className="bg-slate-500/5 dark:bg-white/5 rounded-2xl p-3 border border-slate-200 dark:border-white/5">
               <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Win Accuracy</p>
-              <p className="text-white font-black text-lg tracking-tighter">{winRate}%</p>
+              <p className="text-slate-900 dark:text-white font-black text-lg tracking-tighter">{winRate}%</p>
            </div>
-           <div className="bg-white/5 rounded-2xl p-3 border border-white/5 flex flex-col items-center">
+           <div className="bg-slate-500/5 dark:bg-white/5 rounded-2xl p-3 border border-slate-200 dark:border-white/5 flex flex-col items-center">
               <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Streak</p>
               <div className="flex items-center gap-1">
-                <span className="text-white font-black text-lg tracking-tighter">{Math.abs(streak)}</span>
+                <span className="text-slate-900 dark:text-white font-black text-lg tracking-tighter">{Math.abs(streak)}</span>
                 {streak !== 0 && <Zap size={10} className={cn(streak > 0 ? "text-orange-400 fill-orange-400" : "text-blue-400 rotate-180 fill-blue-400")} />}
               </div>
            </div>
-           <div className="bg-white/5 rounded-2xl p-3 border border-white/5 text-right">
+           <div className="bg-slate-500/5 dark:bg-white/5 rounded-2xl p-3 border border-slate-200 dark:border-white/5 text-right">
               <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Exp.</p>
-              <p className="text-white font-black text-lg tracking-tighter">{trades.length}</p>
+              <p className="text-slate-900 dark:text-white font-black text-lg tracking-tighter">{trades.length}</p>
            </div>
         </div>
       </GlassCard>
 
       <div className="grid grid-cols-2 gap-4">
-        <GlassCard className="p-5 bg-indigo-500/5 border-indigo-500/10 flex flex-col justify-between group overflow-hidden">
+        <GlassCard delay={0.2} className="p-5 bg-indigo-500/5 border-indigo-500/10 flex flex-col justify-between group overflow-hidden">
            <div className="absolute top-0 right-0 p-2 opacity-5 scale-150 rotate-12 transition-transform group-hover:scale-175 group-hover:rotate-0">
              <ShieldCheck size={64} />
            </div>
@@ -133,7 +133,7 @@ export const Dashboard = () => {
            </div>
         </GlassCard>
         
-        <GlassCard className="p-5 bg-emerald-500/5 border-emerald-500/10 flex flex-col justify-between group overflow-hidden">
+        <GlassCard delay={0.3} className="p-5 bg-emerald-500/5 border-emerald-500/10 flex flex-col justify-between group overflow-hidden">
            <div className="absolute top-0 right-0 p-2 opacity-5 scale-150 -rotate-12 transition-transform group-hover:scale-175 group-hover:rotate-0">
              <Activity size={64} />
            </div>
@@ -151,20 +151,20 @@ export const Dashboard = () => {
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        <GlassCard className="p-5 bg-slate-900/50 border-white/5">
+        <GlassCard delay={0.4} className="p-5 bg-white/50 dark:bg-slate-900/50 border-slate-200 dark:border-white/5">
            <div className="flex items-center gap-2 mb-2">
               <div className="w-1.5 h-1.5 rounded-full bg-orange-400" />
               <p className="text-slate-500 text-[9px] font-black uppercase tracking-widest">Expectancy</p>
            </div>
-           <h3 className="text-xl font-black text-white tracking-tighter uppercase"><span className="font-sans">₹</span>{expectancy}</h3>
+           <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tighter uppercase"><span className="font-sans">₹</span>{expectancy}</h3>
            <p className="text-[8px] text-slate-600 font-bold uppercase tracking-tighter mt-1 italic">Expected Yield Per Execute</p>
         </GlassCard>
-        <GlassCard className="p-5 bg-slate-900/50 border-white/5">
+        <GlassCard delay={0.5} className="p-5 bg-white/50 dark:bg-slate-900/50 border-slate-200 dark:border-white/5">
            <div className="flex items-center gap-2 mb-2">
               <div className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
               <p className="text-slate-500 text-[9px] font-black uppercase tracking-widest">Profit Factor</p>
            </div>
-           <h3 className="text-xl font-black text-white tracking-tighter uppercase">{profitFactor}</h3>
+           <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tighter uppercase">{profitFactor}</h3>
            <p className="text-[8px] text-slate-600 font-bold uppercase tracking-tighter mt-1 italic">Gross Prof / Gross Loss</p>
         </GlassCard>
       </div>
@@ -181,7 +181,7 @@ export const Dashboard = () => {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: idx * 0.1 }}
-              className="bg-slate-900/40 rounded-2xl border border-white/5 p-4 flex items-center justify-between group active:scale-[0.98] transition-transform"
+              className="bg-white dark:bg-slate-900/40 rounded-2xl border border-slate-200 dark:border-white/5 p-4 flex items-center justify-between group active:scale-[0.98] transition-all"
             >
               <div className="flex items-center gap-4">
                 <div className={cn(
@@ -191,7 +191,7 @@ export const Dashboard = () => {
                   {trade.type === 'Buy' ? <TrendingUp size={18} /> : <TrendingDown size={18} />}
                 </div>
                 <div>
-                  <p className="text-white font-black text-xs uppercase tracking-tighter">{trade.strategy}</p>
+                  <p className="text-slate-900 dark:text-white font-black text-xs uppercase tracking-tighter">{trade.strategy}</p>
                   <p className="text-slate-600 text-[9px] font-bold uppercase tracking-widest">{trade.index}</p>
                 </div>
               </div>

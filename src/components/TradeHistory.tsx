@@ -1,6 +1,21 @@
 import { useTrades } from "../context/TradeContext";
 import { GlassCard } from "./GlassCard";
-import { TrendingUp, TrendingDown, Filter, Search, Calendar, ChevronRight, MoreHorizontal, Edit3, Trash2, Clock, Target, Info, Crosshair } from "lucide-react";
+import { 
+  TrendingUp, 
+  TrendingDown, 
+  Filter, 
+  Search, 
+  Calendar, 
+  ChevronRight, 
+  MoreHorizontal, 
+  Edit3, 
+  Trash2, 
+  Clock, 
+  Target, 
+  Info, 
+  Crosshair,
+  Share2
+} from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { cn } from "../lib/utils";
 import { useState } from "react";
@@ -11,6 +26,25 @@ export const TradeHistory = ({ onEdit }: { onEdit: (trade: Trade) => void }) => 
   const [filterStrategy, setFilterStrategy] = useState<StrategyType | 'All'>('All');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
+
+  const shareTrade = async (trade: Trade) => {
+    const text = `Trade Report: ${trade.strategy} on ${trade.index}\nType: ${trade.type}\nPnL: ₹${trade.pnl.toLocaleString('en-IN')}\nRR: ${trade.rr}:1\nMood: ${trade.mood}\nLogged on Terminal v2.0`;
+    
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Alpha Trade Execution',
+          text: text,
+        });
+      } catch (err) {
+        console.error('Error sharing:', err);
+      }
+    } else {
+      navigator.clipboard.writeText(text);
+      // Small feedback would be nice, but to keep it simple I'll just use a native alert for now as requested "functional"
+      alert('Trade details copied to clipboard!');
+    }
+  };
 
   const filteredTrades = trades.filter(t => {
     const matchesStrategy = filterStrategy === 'All' || t.strategy === filterStrategy;
@@ -23,7 +57,7 @@ export const TradeHistory = ({ onEdit }: { onEdit: (trade: Trade) => void }) => 
   return (
     <div className="space-y-6 pb-24 relative">
       <header className="px-2">
-        <h1 className="text-3xl font-bold text-white tracking-tighter uppercase">Alpha Ledger</h1>
+        <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter uppercase italic">Alpha Ledger <span className="text-indigo-500 not-italic">India</span></h1>
         <p className="text-slate-500 font-medium text-xs uppercase tracking-widest">Historical Performance Log</p>
       </header>
 
@@ -56,23 +90,31 @@ export const TradeHistory = ({ onEdit }: { onEdit: (trade: Trade) => void }) => 
       </div>
 
       <div className="space-y-4 px-2">
-        {filteredTrades.length === 0 ? (
-          <div className="py-20 text-center flex flex-col items-center">
-             <div className="w-16 h-16 bg-slate-900 rounded-3xl flex items-center justify-center mb-4 text-slate-700">
-                <Search size={32} />
-             </div>
-             <p className="text-slate-500 font-bold uppercase text-xs tracking-widest">No matching sessions found</p>
-          </div>
-        ) : (
-          filteredTrades.map((trade, idx) => (
-            <motion.div
-              layout
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: idx * 0.05, type: 'spring', damping: 20 }}
-              key={trade.id}
-              onClick={() => setSelectedTrade(trade)}
+        <AnimatePresence mode="popLayout">
+          {filteredTrades.length === 0 ? (
+            <motion.div 
+              key="empty"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="py-20 text-center flex flex-col items-center"
             >
+               <div className="w-16 h-16 bg-slate-900 rounded-3xl flex items-center justify-center mb-4 text-slate-700">
+                  <Search size={32} />
+               </div>
+               <p className="text-slate-500 font-bold uppercase text-xs tracking-widest">No matching sessions found</p>
+            </motion.div>
+          ) : (
+            filteredTrades.map((trade, idx) => (
+              <motion.div
+                layout
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.8, x: -50 }}
+                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                key={trade.id}
+                onClick={() => setSelectedTrade(trade)}
+              >
               <GlassCard className="p-5 group relative overflow-hidden transition-all hover:bg-white/5 active:scale-[0.98]">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
@@ -83,10 +125,10 @@ export const TradeHistory = ({ onEdit }: { onEdit: (trade: Trade) => void }) => 
                       {trade.type === 'Buy' ? <TrendingUp size={28} /> : <TrendingDown size={28} />}
                     </div>
                     <div>
-                      <h4 className="text-white font-black uppercase tracking-tighter text-lg leading-none mb-1">{trade.strategy}</h4>
+                      <h4 className="text-slate-900 dark:text-white font-black uppercase tracking-tighter text-lg leading-none mb-1 italic">{trade.strategy}</h4>
                       <div className="flex items-center gap-2">
                          <span className="text-indigo-400 text-[10px] font-black uppercase tracking-widest">{trade.index}</span>
-                         <span className="w-1 h-1 bg-slate-700 rounded-full" />
+                         <span className="w-1 h-1 bg-slate-400 dark:bg-slate-700 rounded-full" />
                          <span className="text-slate-500 text-[10px] font-bold uppercase">{new Date(trade.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
                       </div>
                     </div>
@@ -119,7 +161,8 @@ export const TradeHistory = ({ onEdit }: { onEdit: (trade: Trade) => void }) => 
               </GlassCard>
             </motion.div>
           ))
-        )}
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Trade Summary Overlay */}
@@ -129,7 +172,7 @@ export const TradeHistory = ({ onEdit }: { onEdit: (trade: Trade) => void }) => 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] bg-slate-950/80 backdrop-blur-md flex items-end justify-center p-4 pb-20"
+            className="fixed inset-0 z-[60] bg-white/20 dark:bg-slate-950/80 backdrop-blur-md flex items-end justify-center p-4 pb-20"
             onClick={() => setSelectedTrade(null)}
           >
             <motion.div
@@ -137,14 +180,14 @@ export const TradeHistory = ({ onEdit }: { onEdit: (trade: Trade) => void }) => 
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="w-full max-w-md bg-slate-900 border border-white/10 rounded-t-[40px] p-8 shadow-2xl"
+              className="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-t-[40px] p-8 shadow-[0_-20px_50px_rgba(0,0,0,0.1)] dark:shadow-2xl"
               onClick={e => e.stopPropagation()}
             >
-              <div className="w-12 h-1.5 bg-slate-800 rounded-full mx-auto mb-6" />
+              <div className="w-12 h-1.5 bg-slate-400 dark:bg-slate-800 rounded-full mx-auto mb-6" />
               
               <div className="flex justify-between items-start mb-8">
                 <div>
-                  <h3 className="text-3xl font-black text-white leading-none mb-2 uppercase tracking-tighter">{selectedTrade.strategy}</h3>
+                  <h3 className="text-3xl font-black text-slate-900 dark:text-white leading-none mb-2 uppercase tracking-tighter italic">{selectedTrade.strategy}</h3>
                   <div className="flex items-center gap-3">
                     <span className="flex items-center gap-1 text-indigo-400 text-xs font-black uppercase tracking-widest">
                        {selectedTrade.index}
@@ -169,15 +212,15 @@ export const TradeHistory = ({ onEdit }: { onEdit: (trade: Trade) => void }) => 
               </div>
 
               <div className="grid grid-cols-2 gap-4 mb-8">
-                 <div className="bg-slate-800/40 p-4 rounded-3xl border border-white/5">
+                 <div className="bg-slate-500/5 dark:bg-slate-800/40 p-4 rounded-3xl border border-slate-200 dark:border-white/5">
                     <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1"><Clock size={12}/> Chronology</p>
-                    <p className="text-white text-xs font-bold">Entry: {selectedTrade.entryTime}</p>
-                    <p className="text-white text-xs font-bold">Exit: {selectedTrade.exitTime}</p>
+                    <p className="text-slate-900 dark:text-white text-xs font-bold">Entry: {selectedTrade.entryTime}</p>
+                    <p className="text-slate-900 dark:text-white text-xs font-bold">Exit: {selectedTrade.exitTime}</p>
                  </div>
-                 <div className="bg-slate-800/40 p-4 rounded-3xl border border-white/5">
+                 <div className="bg-slate-500/5 dark:bg-slate-800/40 p-4 rounded-3xl border border-slate-200 dark:border-white/5">
                     <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1"><Crosshair size={12}/> Target Data</p>
-                    <p className="text-white text-xs font-bold">SL: {selectedTrade.sl}</p>
-                    <p className="text-white text-xs font-bold">Target: {selectedTrade.tp}</p>
+                    <p className="text-slate-900 dark:text-white text-xs font-bold">SL: {selectedTrade.sl}</p>
+                    <p className="text-slate-900 dark:text-white text-xs font-bold">Target: {selectedTrade.tp}</p>
                  </div>
               </div>
 
@@ -209,9 +252,15 @@ export const TradeHistory = ({ onEdit }: { onEdit: (trade: Trade) => void }) => 
               <div className="flex gap-4">
                  <button 
                   onClick={() => { setSelectedTrade(null); onEdit(selectedTrade); }}
-                  className="flex-1 py-4 bg-indigo-500 text-white rounded-3xl font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-indigo-600 transition-all active:scale-95"
+                  className="flex-2 py-4 bg-indigo-500 text-white rounded-3xl font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-indigo-600 transition-all active:scale-95"
                 >
-                  <Edit3 size={18} /> Edit Data
+                  <Edit3 size={18} /> Edit
+                </button>
+                <button 
+                  onClick={() => shareTrade(selectedTrade)}
+                  className="flex-1 py-4 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-3xl flex items-center justify-center gap-2 hover:bg-emerald-500/20 transition-all active:scale-95"
+                >
+                  <Share2 size={18} />
                 </button>
                 <button 
                   onClick={() => {
