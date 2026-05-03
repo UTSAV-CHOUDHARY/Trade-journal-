@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { TradeProvider, useTrades } from './context/TradeContext';
 import { Dashboard } from './components/Dashboard';
 import { TradeHistory } from './components/TradeHistory';
@@ -6,18 +6,29 @@ import { Analytics } from './components/Analytics';
 import { PnLCalendar } from './components/PnLCalendar';
 import { AddTradeForm } from './components/AddTradeForm';
 import { Settings } from './components/Settings';
+import { TransformationEngine } from './components/TransformationEngine';
+import { DocumentaryHub } from './components/DocumentaryHub';
+import { CareerMode } from './components/CareerMode';
 import { Login } from './components/Login';
 import { useAuth } from './context/AuthContext';
-import { LayoutDashboard, History, PieChart, Calendar, Plus, Settings as SettingsIcon } from 'lucide-react';
+import { LayoutDashboard, History, PieChart, Calendar, Plus, Settings as SettingsIcon, Activity, Clapperboard, Trophy } from 'lucide-react';
 import { cn } from './lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { Trade } from './types';
 import { logout } from './lib/firebase';
 
-type View = 'dashboard' | 'history' | 'analytics' | 'calendar' | 'add' | 'settings';
+type View = 'dashboard' | 'history' | 'analytics' | 'calendar' | 'add' | 'settings' | 'coach' | 'documentary' | 'career';
 
 function TerminalApp({ currentView, setCurrentView, startEdit, editingTrade, setEditingTrade, navItems }: any) {
   const { loading } = useTrades();
+
+  useEffect(() => {
+    const handleViewChange = (e: any) => {
+      if (e.detail) setCurrentView(e.detail);
+    };
+    window.addEventListener('change-view' as any, handleViewChange);
+    return () => window.removeEventListener('change-view' as any, handleViewChange);
+  }, [setCurrentView]);
 
   if (loading) {
     return (
@@ -57,6 +68,24 @@ const getViewTransition = (view: View) => {
           animate: { opacity: 1, scale: 1, rotate: 0 },
           exit: { opacity: 0, scale: 1.5, rotate: 10 }
         };
+      case 'coach':
+        return {
+          initial: { opacity: 0, scale: 0.8, rotateY: -20 },
+          animate: { opacity: 1, scale: 1, rotateY: 0 },
+          exit: { opacity: 0, scale: 1.2, rotateY: 20 }
+        };
+      case 'documentary':
+        return {
+          initial: { opacity: 0, scale: 0.9, rotateY: 90 },
+          animate: { opacity: 1, scale: 1, rotateY: 0 },
+          exit: { opacity: 0, scale: 1.1, rotateY: -90 }
+        };
+      case 'career':
+        return {
+          initial: { opacity: 0, scale: 1.2, filter: 'blur(10px)' },
+          animate: { opacity: 1, scale: 1, filter: 'blur(0px)' },
+          exit: { opacity: 0, scale: 0.8, filter: 'blur(10px)' }
+        };
       case 'add':
         return {
           initial: { opacity: 0, translateZ: 500, rotateY: 90 },
@@ -81,14 +110,36 @@ const getViewTransition = (view: View) => {
   const transition = getViewTransition(currentView);
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-200 font-sans selection:bg-indigo-500/30 overflow-x-hidden transition-colors duration-500">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-200 font-sans selection:bg-indigo-500/30 overflow-x-hidden transition-colors duration-500">
       {/* Ambient background effects */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-indigo-500/10 blur-[120px]" />
+         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-indigo-500/10 dark:bg-indigo-500/5 blur-[120px]" />
          <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-emerald-500/5 blur-[120px]" />
       </div>
 
-      <main className="max-w-md mx-auto min-h-screen pt-8 pb-32 relative" style={{ perspective: '2000px' }}>
+      {/* High-End Status Bar */}
+      <header className="fixed top-0 left-0 right-0 z-[60] px-6 py-3 flex justify-between items-center bg-white/50 dark:bg-slate-950/50 backdrop-blur-md border-b border-slate-200 dark:border-white/5">
+        <div className="flex items-center gap-4">
+          <div className="w-8 h-8 rounded-lg bg-indigo-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+            <Activity size={18} className="text-white" />
+          </div>
+          <div>
+            <p className="text-[11px] font-medium text-indigo-500 font-serif italic tracking-wider leading-none">Terminal v2.0</p>
+            <p className="text-[7px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mt-1">Live Intelligence Active</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-6">
+          <div className="text-right hidden sm:block">
+            <p className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Network</p>
+            <div className="flex items-center gap-1">
+              <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
+              <p className="text-[9px] font-black text-slate-800 dark:text-white uppercase">Encrypted</p>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-md mx-auto min-h-screen pt-20 pb-32 relative" style={{ perspective: '2000px' }}>
         <AnimatePresence mode="wait">
           <motion.div
             key={currentView}
@@ -108,6 +159,9 @@ const getViewTransition = (view: View) => {
             {currentView === 'analytics' && <Analytics />}
             {currentView === 'calendar' && <PnLCalendar onEdit={startEdit} />}
             {currentView === 'settings' && <Settings />}
+            {currentView === 'coach' && <TransformationEngine />}
+            {currentView === 'documentary' && <DocumentaryHub />}
+            {currentView === 'career' && <CareerMode />}
             {currentView === 'add' && (
               <AddTradeForm 
                 tradeToEdit={editingTrade} 
@@ -188,9 +242,50 @@ export default function App() {
   const { user } = useAuth();
   const [currentView, setCurrentView] = useState<View>('dashboard');
   const [editingTrade, setEditingTrade] = useState<Trade | undefined>(undefined);
+  const [isBooting, setIsBooting] = useState(true);
+
+  useEffect(() => {
+    // Initial boot sequence feel
+    const timer = setTimeout(() => setIsBooting(false), 2000);
+    return () => clearTimeout(timer);
+  }, []);
 
   if (!user) {
     return <Login />;
+  }
+
+  if (isBooting) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 text-center">
+        <div className="relative mb-8">
+           <motion.div 
+             animate={{ rotate: 360, scale: [1, 1.2, 1] }} 
+             transition={{ duration: 4, repeat: Infinity }}
+             className="w-24 h-24 border border-indigo-500/20 rounded-full" 
+           />
+           <div className="absolute inset-0 flex items-center justify-center">
+              <Activity className="text-indigo-500 animate-pulse" size={32} />
+           </div>
+        </div>
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="space-y-1"
+        >
+          <h1 className="text-3xl font-light text-white italic font-serif tracking-wide">Terminal</h1>
+          <p className="text-[9px] font-bold text-indigo-500/80 uppercase tracking-[0.4em] animate-pulse">Initializing Alpha Core</p>
+        </motion.div>
+        
+        <div className="absolute bottom-12 left-0 right-0 px-12">
+           <div className="h-px bg-white/5 w-full mb-4" />
+           <div className="flex justify-between items-center opacity-20">
+              <p className="text-[7px] font-black text-white uppercase tracking-widest">Build v2.0.42</p>
+              <p className="text-[7px] font-black text-white uppercase tracking-widest">Protocol: Secure</p>
+           </div>
+        </div>
+      </div>
+    );
   }
 
   const startEdit = (trade: Trade) => {
@@ -201,9 +296,13 @@ export default function App() {
   const navItems = [
     { id: 'dashboard' as View, icon: LayoutDashboard, label: 'Logs' },
     { id: 'history' as View, icon: History, label: 'Vault' },
-    { id: 'add' as View, icon: Plus, label: 'Add', primary: true },
     { id: 'analytics' as View, icon: PieChart, label: 'Stats' },
-    { id: 'settings' as View, icon: SettingsIcon, label: 'Config' },
+    { id: 'add' as View, icon: Plus, label: 'Add', primary: true },
+    { id: 'career' as View, icon: Trophy, label: 'Path' },
+    { id: 'coach' as View, icon: Activity, label: 'Coach' },
+    { id: 'documentary' as View, icon: Clapperboard, label: 'Documentary' },
+    { id: 'calendar' as View, icon: Calendar, label: 'Calendar' },
+    { id: 'settings' as View, icon: SettingsIcon, label: 'Settings' },
   ];
 
   return (

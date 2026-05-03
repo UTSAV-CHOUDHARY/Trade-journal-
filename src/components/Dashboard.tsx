@@ -23,7 +23,7 @@ export const Dashboard = () => {
   const totalMistakes = trades.reduce((acc, t) => acc + t.mistakes.length, 0);
   const disciplineScore = Math.max(0, Math.min(100, Math.round(100 - ((totalMistakes / (trades.length || 1)) * 15))));
   
-  const today = new Date().toISOString().split('T')[0];
+  const today = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD local
   const todayPnL = trades
     .filter(t => t.date.startsWith(today))
     .reduce((acc, t) => acc + t.pnl, 0);
@@ -43,21 +43,18 @@ export const Dashboard = () => {
     <div className="space-y-6 pb-24 px-2">
       <header className="flex justify-between items-end">
         <div>
-          <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter uppercase leading-none italic">Trading Journal India</h1>
-          <p className="text-slate-500 font-bold text-[10px] uppercase tracking-[0.3em] mt-1">Operational Overview</p>
+          <h1 className="text-3xl font-light text-slate-900 dark:text-white tracking-tight font-serif italic italic-royal">Trading Terminal India</h1>
+          <p className="text-slate-500 font-bold text-[9px] uppercase tracking-[0.4em] mt-1">Operational Overview</p>
         </div>
-        <div className={cn(
-           "flex items-center gap-3 px-4 py-3 rounded-2xl shadow-2xl border transition-all duration-500",
-           winRate < 30 ? "bg-rose-500/20 border-rose-500/30 ring-4 ring-rose-500/5" : "bg-white dark:bg-slate-900 border-slate-200 dark:border-white/5"
-        )}>
-          <span className="text-2xl filter drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]">{level.icon}</span>
-          <div className="flex flex-col">
-            <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">Combat Rank</span>
-            <span className={cn(
-              "text-[11px] font-black uppercase tracking-tighter",
-              winRate < 30 ? "text-rose-400 animate-pulse" : "text-slate-900 dark:text-white"
-            )}>{level.name}</span>
-          </div>
+        <div className="flex flex-col items-end">
+           <span className="text-[7px] font-bold text-indigo-500/70 uppercase mb-1 tracking-[0.2em]">Discipline Score</span>
+           <div className="flex items-center gap-2">
+              <span className={cn(
+                "text-2xl font-light italic font-serif",
+                disciplineScore > 80 ? "text-emerald-500" : disciplineScore > 50 ? "text-amber-500" : "text-rose-500"
+              )}>{disciplineScore}</span>
+              <Activity size={16} className="text-indigo-400" />
+           </div>
         </div>
       </header>
 
@@ -66,11 +63,11 @@ export const Dashboard = () => {
         <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-500/5 blur-[100px] -mr-24 -mt-24 rounded-full" />
         
         <div className="flex justify-between items-start relative z-10">
-          <div className="space-y-1">
-             <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em]">Cumulative Yield</p>
+          <div className="space-y-0.5">
+             <p className="text-slate-500 text-[9px] font-bold uppercase tracking-[0.3em]">Cumulative Yield</p>
              <h2 className={cn(
-               "text-4xl font-black tracking-tighter",
-               totalPnL >= 0 ? "text-emerald-400" : "text-rose-400"
+               "text-4xl font-light font-serif italic tracking-tight",
+               totalPnL >= 0 ? "text-emerald-500" : "text-rose-500"
              )}>
                {totalPnL >= 0 ? '+' : '-'}<span className="font-sans">₹</span>{Math.abs(totalPnL).toLocaleString('en-IN', { minimumFractionDigits: 0 })}
              </h2>

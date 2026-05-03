@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { GlassCard } from './GlassCard';
 import { useAuth } from '../context/AuthContext';
+import { useTrades } from '../context/TradeContext';
 import { logout } from '../lib/firebase';
 import { 
   Settings as SettingsIcon, 
@@ -12,19 +13,50 @@ import {
   Shield,
   Bell,
   Smartphone,
-  Globe
+  Globe,
+  Target,
+  Zap,
+  TrendingDown,
+  ShieldAlert,
+  Save,
+  Activity
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { cn } from '../lib/utils';
 
 export const Settings = () => {
   const { user } = useAuth();
+  const { settings, updateSettings } = useTrades();
   const [theme, setTheme] = useState<'light' | 'dark'>(
     (localStorage.getItem('tradeflow_theme') as 'light' | 'dark') || 'dark'
   );
   const [language, setLanguage] = useState(
     localStorage.getItem('tradeflow_lang') || 'English'
   );
+
+  const [localSettings, setLocalSettings] = useState({
+    monthlyGoal: settings.monthlyGoal,
+    dailyTradeLimit: settings.dailyTradeLimit || 3,
+    dailyLossLimit: settings.dailyLossLimit || 5000,
+    isLockdownEnabled: settings.isLockdownEnabled || false
+  });
+
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    setLocalSettings({
+      monthlyGoal: settings.monthlyGoal,
+      dailyTradeLimit: settings.dailyTradeLimit || 3,
+      dailyLossLimit: settings.dailyLossLimit || 5000,
+      isLockdownEnabled: settings.isLockdownEnabled || false
+    });
+  }, [settings]);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    await updateSettings(localSettings);
+    setIsSaving(false);
+  };
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -50,15 +82,117 @@ export const Settings = () => {
 
   return (
     <div className="space-y-6 pb-20">
-      <header className="flex items-center gap-3 mb-8">
-        <div className="p-3 bg-indigo-500/10 rounded-2xl">
-          <SettingsIcon className="text-indigo-400" size={24} />
+      <header className="flex items-center justify-between mb-8">
+        <div className="flex items-center gap-3">
+          <div className="p-3 bg-indigo-500/10 rounded-2xl">
+            <SettingsIcon className="text-indigo-400" size={24} />
+          </div>
+          <div>
+            <h2 className="text-2xl font-light font-serif italic text-slate-900 dark:text-white tracking-tight">Terminal Control</h2>
+            <p className="text-slate-500 font-bold text-[9px] uppercase tracking-[0.4em] leading-none mt-1">Operational Protocol v2.5</p>
+          </div>
         </div>
-        <div>
-          <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tighter uppercase italic">Control <span className="text-indigo-500 not-italic">Center</span></h2>
-          <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest leading-none">Journal India Protocol v2.5</p>
-        </div>
+        <button 
+          onClick={handleSave}
+          disabled={isSaving}
+          className="p-3 bg-indigo-500 text-white rounded-2xl shadow-lg shadow-indigo-500/20 active:scale-95 transition-all disabled:opacity-50"
+        >
+          {isSaving ? <Activity size={20} className="animate-spin" /> : <Save size={20} />}
+        </button>
       </header>
+
+      {/* Risk Architecture */}
+      <div className="space-y-3">
+         <p className="text-slate-600 text-[9px] font-black uppercase tracking-[0.3em] px-2 mb-2 italic">Risk Architecture</p>
+         <GlassCard className="p-5 space-y-4 bg-slate-900/40 border-white/5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-indigo-500/10 rounded-xl">
+                  <Target size={16} className="text-indigo-400" />
+                </div>
+                <div>
+                  <h4 className="text-white font-black text-xs uppercase tracking-tight">Monthly Target</h4>
+                  <p className="text-slate-500 text-[8px] font-bold uppercase tracking-widest">Yield Goal</p>
+                </div>
+              </div>
+              <input 
+                type="number"
+                value={localSettings.monthlyGoal}
+                onChange={e => setLocalSettings({...localSettings, monthlyGoal: Number(e.target.value)})}
+                className="w-24 bg-white/5 border border-white/10 rounded-xl p-2 text-right font-black text-xs text-white focus:ring-1 focus:ring-indigo-500 outline-none"
+              />
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-rose-500/10 rounded-xl">
+                  <ShieldAlert size={16} className="text-rose-400" />
+                </div>
+                <div>
+                  <h4 className="text-white font-black text-xs uppercase tracking-tight">Trade Cap</h4>
+                  <p className="text-slate-500 text-[8px] font-bold uppercase tracking-widest">Daily Limit</p>
+                </div>
+              </div>
+              <input 
+                type="number"
+                value={localSettings.dailyTradeLimit}
+                onChange={e => setLocalSettings({...localSettings, dailyTradeLimit: Number(e.target.value)})}
+                className="w-24 bg-white/5 border border-white/10 rounded-xl p-2 text-right font-black text-xs text-white focus:ring-1 focus:ring-indigo-500 outline-none"
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-amber-500/10 rounded-xl">
+                  <TrendingDown size={16} className="text-amber-400" />
+                </div>
+                <div>
+                  <h4 className="text-white font-black text-xs uppercase tracking-tight">Loss Floor</h4>
+                  <p className="text-slate-500 text-[8px] font-bold uppercase tracking-widest">Max Session Deficit</p>
+                </div>
+              </div>
+              <input 
+                type="number"
+                value={localSettings.dailyLossLimit}
+                onChange={e => setLocalSettings({...localSettings, dailyLossLimit: Number(e.target.value)})}
+                className="w-24 bg-white/5 border border-white/10 rounded-xl p-2 text-right font-black text-xs text-white focus:ring-1 focus:ring-indigo-500 outline-none"
+              />
+            </div>
+
+            <div className="pt-2">
+              <button 
+                onClick={() => setLocalSettings({...localSettings, isLockdownEnabled: !localSettings.isLockdownEnabled})}
+                className="w-full h-px bg-white/5 my-2" 
+              />
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={cn(
+                    "p-2 rounded-xl transition-colors",
+                    localSettings.isLockdownEnabled ? "bg-rose-500/20" : "bg-slate-500/10"
+                  )}>
+                    <ShieldAlert size={16} className={localSettings.isLockdownEnabled ? "text-rose-400" : "text-slate-400"} />
+                  </div>
+                  <div>
+                    <h4 className="text-white font-black text-xs uppercase tracking-tight">Lockdown Mode</h4>
+                    <p className="text-slate-500 text-[8px] font-bold uppercase tracking-widest">Auto-Restrict on Limits</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setLocalSettings({...localSettings, isLockdownEnabled: !localSettings.isLockdownEnabled})}
+                  className={cn(
+                    "w-10 h-5 rounded-full relative transition-all duration-300",
+                    localSettings.isLockdownEnabled ? "bg-rose-500" : "bg-slate-700"
+                  )}
+                >
+                  <motion.div 
+                    animate={{ x: localSettings.isLockdownEnabled ? 22 : 2 }}
+                    className="absolute top-1 w-3 h-3 bg-white rounded-full shadow-lg"
+                  />
+                </button>
+              </div>
+            </div>
+         </GlassCard>
+      </div>
 
       {/* Profile Section */}
       <GlassCard className="p-6 bg-white dark:bg-slate-900/40 border-slate-200 dark:border-white/5">

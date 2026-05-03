@@ -1,7 +1,7 @@
 {
   "name": "Trading Journal India",
   "description": "Premium trading journal for the Indian market. Track F&O, stocks, and commodities with advanced analytics.",
-  "requestFramePermissions": [],
+  "requestFramePermissions": ["microphone"],
   "majorCapabilities": [
     "Trading Journal",
     "PnL Analytics",

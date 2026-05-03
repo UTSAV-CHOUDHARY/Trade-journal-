@@ -81,15 +81,24 @@ export const Analytics = () => {
   }, {});
 
   const mistakeData = Object.values(mistakeFreq).sort((a: any, b: any) => b.count - a.count);
+  const mostCommonMistake = (mistakeData.length > 0 ? mistakeData[0] : null) as any;
 
   // Goal Progress (Current Month Only)
   const now = new Date();
-  const currentMonthTrades = trades.filter(t => isSameMonth(new Date(t.date), now));
+  const currentMonthTrades = trades.filter(t => {
+    const tDate = new Date(t.date);
+    return tDate.getUTCMonth() === now.getMonth() && tDate.getUTCFullYear() === now.getFullYear();
+  });
   const currentMonthPnL = currentMonthTrades.reduce((acc, t) => acc + t.pnl, 0);
   const goalProgress = Math.min(Math.max((currentMonthPnL / monthlyGoal) * 100, 0), 100);
   
   const daysLeftInMonth = differenceInDays(endOfMonth(now), now);
   const dailyPnLNeeded = (monthlyGoal - currentMonthPnL) / Math.max(daysLeftInMonth, 1);
+
+  // Market Sentiment (Based on last 5 trades)
+  const lastTrades = trades.slice(0, 5);
+  const positiveMoods = lastTrades.filter(t => ['😃 Happy', '🤑 Greedy'].includes(t.mood)).length;
+  const marketSentiment = positiveMoods >= 3 ? 'Euphoric' : positiveMoods >= 1 ? 'Stable' : 'Distressed';
 
   const handleUpdateGoal = async () => {
     setIsUpdating(true);
@@ -114,26 +123,65 @@ export const Analytics = () => {
 
   // Weekday performance calculation
   const weekdayPerf = trades.reduce((acc: any, t) => {
-    const day = new Date(t.date).getDay();
+    // We use UTC components because we store as ISO strings at midnight.
+    // This ensures that "Tuesday" selected in the form stays "Tuesday" during analysis.
+    const dateObj = new Date(t.date);
+    const day = dateObj.getUTCDay();
     const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const dayName = days[day];
     
-    if (!acc[dayName]) acc[dayName] = { name: dayName, profit: 0, count: 0, wins: 0, id: day };
+    if (!acc[dayName]) {
+      acc[dayName] = { 
+        name: dayName, 
+        profit: 0, 
+        count: 0, 
+        wins: 0, 
+        id: day,
+        totalWinAmount: 0,
+        totalLossAmount: 0
+      };
+    }
     acc[dayName].profit += t.pnl;
     acc[dayName].count += 1;
-    if (t.pnl > 0) acc[dayName].wins += 1;
+    if (t.pnl > 0) {
+      acc[dayName].wins += 1;
+      acc[dayName].totalWinAmount += t.pnl;
+    } else {
+      acc[dayName].totalLossAmount += Math.abs(t.pnl);
+    }
     return acc;
   }, {});
 
   const weekdayData = Object.values(weekdayPerf)
     .filter((d: any) => d.id !== 0 && d.id !== 6) // Focus on trading days
+    .map((d: any) => ({
+      ...d,
+      winRate: (d.wins / d.count) * 100,
+      pf: d.totalLossAmount > 0 ? (d.totalWinAmount / d.totalLossAmount).toFixed(2) : d.totalWinAmount > 0 ? '∞' : '0.00'
+    }))
     .sort((a: any, b: any) => a.id - b.id);
+
+  const bestDay = weekdayData.length > 0 ? weekdayData.reduce((prev: any, current: any) => (prev.profit > current.profit) ? prev : current) : null;
+  const worstDay = weekdayData.length > 0 ? weekdayData.reduce((prev: any, current: any) => (prev.profit < current.profit) ? prev : current) : null;
 
   return (
     <div className="space-y-6 pb-24 px-2">
-      <header>
-        <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter uppercase italic">Market Intel <span className="text-indigo-500 not-italic">India</span></h1>
-        <p className="text-slate-500 font-bold text-xs uppercase tracking-widest">Statistical Advantage Mapping</p>
+      <header className="flex justify-between items-end">
+        <div>
+          <h1 className="text-3xl font-light font-serif italic text-slate-900 dark:text-white tracking-tight">Market Intelligence India</h1>
+          <p className="text-slate-500 font-bold text-[9px] uppercase tracking-[0.4em] mt-1">Statistical Advantage Mapping</p>
+        </div>
+        <div className="text-right">
+           <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Sentiment</p>
+           <span className={cn(
+             "px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-tighter",
+             marketSentiment === 'Euphoric' ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20" :
+             marketSentiment === 'Stable' ? "bg-indigo-500/20 text-indigo-400" :
+             "bg-rose-500 text-white shadow-lg shadow-rose-500/20"
+           )}>
+             {marketSentiment}
+           </span>
+        </div>
       </header>
 
       {/* Monthly Goal Tracker */}
@@ -337,31 +385,49 @@ export const Analytics = () => {
         </GlassCard>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <GlassCard className="p-5 bg-indigo-500/5 border-indigo-500/20">
-           <Zap className="text-indigo-400 mb-3" size={24} />
-           <p className="text-slate-500 text-[10px] uppercase font-black tracking-widest">Efficiency</p>
-           <h3 className="text-2xl font-black text-slate-900 dark:text-white">{winRate.toFixed(1)}%</h3>
-           <p className="text-indigo-400/60 text-[9px] uppercase font-black mt-1 tracking-tighter">Win Accuracy</p>
+           <Zap className="text-indigo-400 mb-3" size={20} />
+           <p className="text-slate-500 text-[9px] uppercase font-black tracking-widest leading-none mb-1">Efficiency</p>
+           <h3 className="text-2xl font-black text-slate-900 dark:text-white leading-none">{winRate.toFixed(1)}%</h3>
+           <p className="text-indigo-400/60 text-[8px] uppercase font-black mt-2 tracking-tighter">Win Accuracy</p>
         </GlassCard>
         <GlassCard className="p-5 bg-emerald-500/5 border-emerald-500/20">
-           <Target className="text-emerald-400 mb-3" size={24} />
-           <p className="text-slate-500 text-[10px] uppercase font-black tracking-widest">Profit Factor</p>
-           <h3 className="text-2xl font-black text-slate-900 dark:text-white">{profitFactor}</h3>
-           <p className="text-emerald-400/60 text-[9px] uppercase font-black mt-1 tracking-tighter">Yield Multiplier</p>
+           <Target className="text-emerald-400 mb-3" size={20} />
+           <p className="text-slate-500 text-[9px] uppercase font-black tracking-widest leading-none mb-1">Tactical Edge</p>
+           <h3 className="text-2xl font-black text-slate-900 dark:text-white leading-none">{avgRR.toFixed(2)}:1</h3>
+           <p className="text-emerald-400/60 text-[8px] uppercase font-black mt-2 tracking-tighter">Average RR</p>
+        </GlassCard>
+        <GlassCard className="p-5 bg-slate-900/40 border-white/5">
+           <Activity className="text-slate-400 mb-3" size={20} />
+           <p className="text-slate-500 text-[9px] uppercase font-black tracking-widest leading-none mb-1">Volume</p>
+           <h3 className="text-2xl font-black text-slate-900 dark:text-white leading-none">{totalTrades}</h3>
+           <p className="text-slate-500 text-[8px] uppercase font-black mt-2 tracking-tighter">Total Trades</p>
+        </GlassCard>
+        <GlassCard className="p-5 bg-slate-900/40 border-white/5">
+           <CheckCircle className="text-indigo-400 mb-3" size={20} />
+           <p className="text-slate-500 text-[9px] uppercase font-black tracking-widest leading-none mb-1">Best Edge</p>
+           <h3 className="text-xl font-black text-slate-900 dark:text-white truncate leading-none italic">{bestStrategy?.name || "N/A"}</h3>
+           <p className="text-indigo-400/60 text-[8px] uppercase font-black mt-2 tracking-tighter">Primary Strategy</p>
         </GlassCard>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         <GlassCard className="p-5 bg-slate-900/40 border-white/5">
-           <p className="text-slate-500 text-[9px] uppercase font-black tracking-widest mb-1">Avg Execution</p>
+           <p className="text-slate-500 text-[9px] uppercase font-black tracking-widest mb-1">Average Execution</p>
            <h4 className={cn("text-xl font-black", avgPnL >= 0 ? "text-emerald-400" : "text-rose-400")}>
             <span className="font-sans">₹</span>{avgPnL.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
            </h4>
         </GlassCard>
-        <GlassCard className="p-5 bg-slate-900/40 border-white/5">
-           <p className="text-slate-500 text-[9px] uppercase font-black tracking-widest mb-1">Execution Count</p>
-           <h4 className="text-xl font-black text-slate-900 dark:text-white">{totalTrades}</h4>
+        <GlassCard className="p-5 bg-rose-500/5 border-rose-500/20">
+           <p className="text-slate-500 text-[9px] uppercase font-black tracking-widest mb-1">Primary Friction</p>
+           <h4 className="text-lg font-black text-rose-500 truncate italic uppercase leading-tight">
+             {mostCommonMistake ? mostCommonMistake.name : "Zero Friction"}
+           </h4>
+           <div className="flex items-center gap-1 mt-1">
+             <AlertTriangle size={10} className="text-rose-500/50" />
+             <p className="text-[8px] font-black text-rose-500/60 uppercase tracking-widest">Most Common Mistake</p>
+           </div>
         </GlassCard>
       </div>
 
@@ -450,32 +516,45 @@ export const Analytics = () => {
       </div>
 
       <GlassCard className="bg-slate-900/60 transition-all hover:bg-slate-900/80">
-        <div className="flex items-center gap-2 mb-6">
-          <CalendarIcon size={20} className="text-indigo-400" />
-          <h3 className="text-slate-900 dark:text-white font-black text-sm uppercase tracking-widest">Weekday Edge Log</h3>
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-2">
+            <CalendarIcon size={20} className="text-indigo-400" />
+            <h3 className="text-slate-900 dark:text-white font-black text-sm uppercase tracking-widest">Temporal Accuracy Log</h3>
+          </div>
+          <div className="flex gap-2">
+             <div className="px-2 py-1 bg-emerald-500/10 rounded text-[8px] font-black text-emerald-400 uppercase">Best: {bestDay?.name?.slice(0,3)}</div>
+             <div className="px-2 py-1 bg-rose-500/10 rounded text-[8px] font-black text-rose-400 uppercase">Worst: {worstDay?.name?.slice(0,3)}</div>
+          </div>
         </div>
         <div className="space-y-4">
           {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].map((dayName) => {
-            const data = (weekdayData.find((d: any) => d.name === dayName) || { profit: 0, wins: 0, count: 1 }) as any;
-            const wRate = Math.round((data.wins / (data.count || 1)) * 100);
+            const data = (weekdayData.find((d: any) => d.name === dayName) || { profit: 0, wins: 0, count: 0, winRate: 0, pf: '0.00' }) as any;
+            const wRate = Math.round(data.winRate);
             
             return (
-              <div key={dayName} className="flex items-center justify-between p-3 bg-slate-500/5 dark:bg-white/5 rounded-2xl border border-slate-200 dark:border-white/5">
+              <div key={dayName} className="flex items-center justify-between p-3 bg-slate-500/5 dark:bg-white/5 rounded-2xl border border-slate-200 dark:border-white/5 group hover:border-indigo-500/30 transition-all">
                 <div className="flex flex-col">
                   <span className="text-slate-900 dark:text-white text-xs font-black uppercase tracking-tighter">{dayName}</span>
-                  <span className={cn(
-                    "text-[10px] font-black uppercase tracking-widest",
-                    wRate >= 50 ? "text-emerald-500" : "text-rose-500"
-                  )}>{wRate}% WIN RATE</span>
+                  <div className="flex items-center gap-2 mt-1">
+                    <div className="w-12 h-1 bg-slate-800 rounded-full overflow-hidden">
+                       <div className={cn("h-full", wRate >= 50 ? "bg-emerald-500" : "bg-rose-500")} style={{ width: `${wRate}%` }} />
+                    </div>
+                    <span className={cn(
+                      "text-[8px] font-black uppercase tracking-widest",
+                      wRate >= 50 ? "text-emerald-500" : "text-rose-500"
+                    )}>{wRate}% Accuracy</span>
+                  </div>
                 </div>
                 <div className="text-right">
                   <p className={cn(
-                    "text-sm font-black tracking-tighter",
+                    "text-sm font-black tracking-tighter leading-none mb-1",
                     data.profit >= 0 ? "text-emerald-400" : "text-rose-400"
                   )}>
                     {data.profit >= 0 ? '+' : '-'}<span className="font-sans">₹</span>{Math.abs(data.profit).toLocaleString('en-IN')}
                   </p>
-                  <p className="text-[8px] text-slate-500 font-bold uppercase">{data.count} SESSIONS</p>
+                  <p className="text-[7px] text-slate-500 font-bold uppercase tracking-widest">
+                    {data.count} Sessions • PF: {data.pf}
+                  </p>
                 </div>
               </div>
             );

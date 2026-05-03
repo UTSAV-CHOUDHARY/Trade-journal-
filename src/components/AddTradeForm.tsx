@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useTrades } from "../context/TradeContext";
 import { GlassCard } from "./GlassCard";
 import { Trade, StrategyType, MistakeTag, TradeType, MoodType, IndexType } from "../types";
@@ -7,10 +7,20 @@ import { motion, AnimatePresence } from "motion/react";
 import { cn } from "../lib/utils";
 
 export const AddTradeForm = ({ onComplete, tradeToEdit }: { onComplete: () => void, tradeToEdit?: Trade }) => {
-  const { addTrade, updateTrade } = useTrades();
+  const { trades, settings, addTrade, updateTrade, draftTrade, setDraftTrade } = useTrades();
   const [step, setStep] = useState(1);
   const [showSuccess, setShowSuccess] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Self-Control Lock Logic
+  const today = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD local
+  const todayTrades = trades.filter(t => t.date.startsWith(today));
+  const netPnL = todayTrades.reduce((acc, t) => acc + t.pnl, 0);
+
+  const isLocked = !tradeToEdit && settings.isLockdownEnabled && (
+    (settings.dailyTradeLimit && todayTrades.length >= settings.dailyTradeLimit) ||
+    (settings.dailyLossLimit && netPnL <= -settings.dailyLossLimit)
+  );
 
   const mistakes: MistakeTag[] = ['Fear', 'Overtrading', 'Late Entry', 'Early Exit', 'No Setup', 'Reversed Trade', 'Averaging Loss'];
   const strategies: StrategyType[] = ['Scalping', 'Intraday', 'Swing', 'Custom'];
@@ -29,16 +39,49 @@ export const AddTradeForm = ({ onComplete, tradeToEdit }: { onComplete: () => vo
     notes: tradeToEdit?.notes || '',
     entryTime: tradeToEdit?.entryTime || new Date().toLocaleTimeString('en-IN', { hour12: false, hour: '2-digit', minute: '2-digit' }),
     exitTime: tradeToEdit?.exitTime || new Date().toLocaleTimeString('en-IN', { hour12: false, hour: '2-digit', minute: '2-digit' }),
-    date: tradeToEdit ? new Date(tradeToEdit.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+    date: tradeToEdit ? new Date(tradeToEdit.date).toISOString().split('T')[0] : new Date().toLocaleDateString('en-CA'),
     mood: tradeToEdit?.mood || '😐 Neutral',
     entryCondition: tradeToEdit?.entryCondition || '',
     exitCondition: tradeToEdit?.exitCondition || '',
     screenshot: tradeToEdit?.screenshot || ''
   });
 
+  useEffect(() => {
+    if (draftTrade && !tradeToEdit) {
+      // Helper to try and match partial strings to options
+      const findMatch = (options: string[], value?: string) => {
+        if (!value) return null;
+        return options.find(o => o.toLowerCase().includes(value.toLowerCase())) || null;
+      };
+
+      setFormData(prev => ({
+        ...prev,
+        type: draftTrade.type || prev.type,
+        index: (findMatch(indices, draftTrade.asset) as IndexType) || prev.index,
+        lotSize: draftTrade.quantity?.toString() || prev.lotSize,
+        entry: draftTrade.price?.toString() || prev.entry,
+        exit: draftTrade.exit?.toString() || prev.exit,
+        sl: draftTrade.sl?.toString() || prev.sl,
+        tp: draftTrade.tp?.toString() || prev.tp,
+        strategy: (findMatch(strategies, draftTrade.strategy) as StrategyType) || prev.strategy,
+        notes: draftTrade.summary || prev.notes,
+        mood: draftTrade.emotion ? (findMatch(moods, draftTrade.emotion) as MoodType || prev.mood) : prev.mood
+      }));
+
+      if (draftTrade.mistakes && Array.isArray(draftTrade.mistakes)) {
+        const validMistakes = draftTrade.mistakes.filter((m: string) => mistakes.includes(m as MistakeTag)) as MistakeTag[];
+        setSelectedMistakes(validMistakes);
+      }
+      
+      setDraftTrade(null); // Clear after consumption
+    }
+  }, [draftTrade, tradeToEdit, setDraftTrade, indices, strategies, moods, mistakes]);
+
   const [selectedMistakes, setSelectedMistakes] = useState<MistakeTag[]>(tradeToEdit?.mistakes || []);
 
   const handleCreate = () => {
+    if (isLocked) return;
+    
     const tradeData = {
       type: formData.type as TradeType,
       strategy: formData.strategy as StrategyType,
@@ -102,8 +145,8 @@ export const AddTradeForm = ({ onComplete, tradeToEdit }: { onComplete: () => vo
             <div className="w-24 h-24 bg-emerald-500 rounded-full flex items-center justify-center mb-6 shadow-lg shadow-emerald-500/20">
               <CheckCircle2 size={48} className="text-white" />
             </div>
-            <h3 className="text-3xl font-black text-white mb-2">Trade Captured!</h3>
-            <p className="text-slate-400 font-medium">Data leads to alpha. Keep journaling!</p>
+            <h3 className="text-3xl font-light font-serif italic text-white mb-2">Trade Captured</h3>
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.3em]">Integrity in every execution</p>
           </motion.div>
         ) : (
           <motion.div
@@ -114,12 +157,12 @@ export const AddTradeForm = ({ onComplete, tradeToEdit }: { onComplete: () => vo
           >
             <div className="flex justify-between items-center mb-6 px-2">
               <div className="flex flex-col">
-                <h2 className="text-2xl font-black text-white uppercase tracking-tighter">
-                  {tradeToEdit ? "Update Trade Record" : "New Journal Entry"}
+                <h2 className="text-2xl font-light font-serif italic text-white tracking-tight">
+                  {tradeToEdit ? "Refine Trade Record" : "New Performance Entry"}
                 </h2>
-                <div className="flex gap-1 mt-1">
+                <div className="flex gap-1.5 mt-2">
                    {[1, 2, 3].map(i => (
-                     <div key={i} className={cn("h-1 rounded-full transition-all", step >= i ? "bg-indigo-500 w-8" : "bg-slate-800 w-4")} />
+                     <div key={i} className={cn("h-[2px] transition-all duration-500", step >= i ? "bg-indigo-500 w-10" : "bg-slate-800 w-4")} />
                    ))}
                 </div>
               </div>
@@ -128,7 +171,29 @@ export const AddTradeForm = ({ onComplete, tradeToEdit }: { onComplete: () => vo
               </button>
             </div>
 
-            <div className="space-y-4">
+            {isLocked && (
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-rose-500/10 border border-rose-500/20 p-6 rounded-[2rem] mb-8 text-center backdrop-blur-md"
+              >
+                <ShieldAlert size={32} className="text-rose-500 mx-auto mb-3" />
+                <h3 className="text-xl font-light font-serif italic text-white">System Integrity Lock</h3>
+                <p className="text-[8px] text-rose-300 font-bold uppercase tracking-[0.3em] mt-2 leading-relaxed">
+                  Execution limits detected. Operational pause enforced to preserve terminal capital.
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2 justify-center">
+                   {settings.dailyTradeLimit && (
+                     <div className="px-3 py-1 bg-rose-500/30 rounded-lg text-[9px] font-black text-white">TRADES: {todayTrades.length}/{settings.dailyTradeLimit}</div>
+                   )}
+                   {settings.dailyLossLimit && (
+                     <div className="px-3 py-1 bg-rose-500/30 rounded-lg text-[9px] font-black text-white">PNL: ₹{netPnL}/{ -settings.dailyLossLimit }</div>
+                   )}
+                </div>
+              </motion.div>
+            )}
+
+            <div className={cn("space-y-4", isLocked && "opacity-20 pointer-events-none grayscale")}>
               {step === 1 && (
                 <div className="space-y-4">
                    <GlassCard className="p-4 bg-slate-900/60 border border-white/5">

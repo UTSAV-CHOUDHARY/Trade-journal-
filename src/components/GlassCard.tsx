@@ -1,18 +1,19 @@
 import { ReactNode } from 'react';
 import { cn } from '../lib/utils';
-import { motion } from 'motion/react';
+import { HTMLMotionProps, motion } from 'motion/react';
 
-interface GlassCardProps {
+interface GlassCardProps extends HTMLMotionProps<'div'> {
   children: ReactNode;
   className?: string;
   delay?: number;
 }
 
-export const GlassCard = ({ children, className, delay = 0 }: GlassCardProps) => {
+export const GlassCard = ({ children, className, delay = 0, ...props }: GlassCardProps) => {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20, scale: 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
+      {...props}
       whileHover={{ 
         y: -8,
         scale: 1.02,

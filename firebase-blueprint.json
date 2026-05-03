@@ -36,9 +36,59 @@
       "type": "object",
       "properties": {
         "monthlyGoal": { "type": "number" },
-        "updatedAt": { "type": "string", "format": "date-time" }
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "dailyTradeLimit": { "type": "number" },
+        "dailyLossLimit": { "type": "number" },
+        "isLockdownEnabled": { "type": "boolean" }
       },
       "required": ["monthlyGoal", "updatedAt"]
+    },
+    "TraderDNA": {
+      "title": "Trader DNA Profile",
+      "description": "AI generated behavioral profile",
+      "type": "object",
+      "properties": {
+        "archetype": { "type": "string" },
+        "traits": { "type": "array", "items": { "type": "string" } },
+        "biases": { "type": "array", "items": { "type": "string" } },
+        "summary": { "type": "string" },
+        "riskScore": { "type": "number" },
+        "disciplineScore": { "type": "number" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "CareerProfile": {
+      "title": "Career Profile",
+      "description": "User's RPG progression data",
+      "type": "object",
+      "properties": {
+        "level": { "type": "number" },
+        "levelName": { "type": "string" },
+        "currentXP": { "type": "number" },
+        "nextLevelXP": { "type": "number" },
+        "totalXP": { "type": "number" },
+        "streak": { "type": "number" },
+        "lastActivityDate": { "type": "string" },
+        "unlockedFeatures": { "type": "array", "items": { "type": "string" } },
+        "achievements": { "type": "array", "items": { "type": "string" } },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Challenge": {
+       "title": "Trade Challenge",
+       "description": "Active goal for leveling up",
+       "type": "object",
+       "properties": {
+         "id": { "type": "string" },
+         "title": { "type": "string" },
+         "description": { "type": "string" },
+         "type": { "type": "string" },
+         "target": { "type": "number" },
+         "current": { "type": "number" },
+         "xpReward": { "type": "number" },
+         "isCompleted": { "type": "boolean" },
+         "minLevel": { "type": "number" }
+       }
     }
   },
   "firestore": {
@@ -49,6 +99,18 @@
     "/settings/{userId}": {
       "schema": "Settings",
       "description": "User specific configuration"
+    },
+    "/dna/{userId}": {
+      "schema": "TraderDNA",
+      "description": "Behavioral identity profiling"
+    },
+    "/career/{userId}": {
+      "schema": "CareerProfile",
+      "description": "RPG progression for the trader"
+    },
+    "/career/{userId}/challenges/{challengeId}": {
+      "schema": "Challenge",
+      "description": "User specific progression goals"
     }
   }
 }

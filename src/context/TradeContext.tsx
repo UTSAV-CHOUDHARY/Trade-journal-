@@ -12,9 +12,11 @@ import {
   updateDoc, 
   deleteDoc, 
   serverTimestamp,
-  orderBy
+  orderBy,
+  getDoc
 } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
+import { updateXP, CareerProfile, getCareerProfile, initializeCareerProfile } from '../services/careerService';
 
 enum OperationType {
   CREATE = 'create',
@@ -24,7 +26,7 @@ enum OperationType {
   GET = 'get',
   WRITE = 'write',
 }
-
+// ... (rest of imports and error handling)
 interface FirestoreErrorInfo {
   error: string;
   operationType: OperationType;
@@ -50,10 +52,20 @@ const handleFirestoreError = (error: unknown, operationType: OperationType, path
 interface TradeContextType {
   trades: Trade[];
   monthlyGoal: number;
+  settings: {
+    monthlyGoal: number;
+    dailyTradeLimit?: number;
+    dailyLossLimit?: number;
+    isLockdownEnabled?: boolean;
+  };
+  careerProfile: CareerProfile | null;
   addTrade: (trade: Omit<Trade, 'id' | 'pnl' | 'rr'>) => Promise<void>;
   deleteTrade: (id: string) => Promise<void>;
   updateTrade: (id: string, trade: Partial<Trade>) => Promise<void>;
   setMonthlyGoal: (goal: number) => Promise<void>;
+  updateSettings: (newSettings: Partial<TradeContextType['settings']>) => Promise<void>;
+  draftTrade: any | null;
+  setDraftTrade: (data: any | null) => void;
   loading: boolean;
 }
 
@@ -61,23 +73,42 @@ const TradeContext = createContext<TradeContextType | undefined>(undefined);
 
 export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [trades, setTrades] = useState<Trade[]>([]);
-  const [monthlyGoal, setMonthlyGoalLocal] = useState<number>(100000);
+  const [settings, setSettingsLocal] = useState<TradeContextType['settings']>({ monthlyGoal: 100000 });
+  const [draftTrade, setDraftTrade] = useState<any | null>(null);
+  const [careerProfile, setCareerProfile] = useState<CareerProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
 
   useEffect(() => {
     if (!user) {
       setTrades([]);
-      setMonthlyGoalLocal(100000);
+      setSettingsLocal({ monthlyGoal: 100000 });
+      setCareerProfile(null);
       setLoading(false);
       return;
     }
 
-    // Fetch monthly goal
+    // Fetch career profile
+    const careerPath = 'career';
+    const careerUnsub = onSnapshot(doc(db, careerPath, user.uid), (doc) => {
+      if (doc.exists()) {
+        setCareerProfile(doc.data() as CareerProfile);
+      } else {
+        initializeCareerProfile(user.uid);
+      }
+    });
+
+    // Fetch settings
     const settingsPath = 'settings';
     const settingsUnsubscribe = onSnapshot(doc(db, settingsPath, user.uid), (doc) => {
       if (doc.exists()) {
-        setMonthlyGoalLocal(doc.data().monthlyGoal || 100000);
+        const data = doc.data();
+        setSettingsLocal({
+          monthlyGoal: data.monthlyGoal || 100000,
+          dailyTradeLimit: data.dailyTradeLimit,
+          dailyLossLimit: data.dailyLossLimit,
+          isLockdownEnabled: data.isLockdownEnabled
+        });
       }
     }, (error) => {
       console.warn('Failed to fetch settings, using default goal', error);
@@ -104,20 +135,25 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return () => {
       unsubscribe();
       settingsUnsubscribe();
+      careerUnsub();
     };
   }, [user]);
 
-  const setMonthlyGoal = async (goal: number) => {
+  const updateSettings = async (newSettings: Partial<TradeContextType['settings']>) => {
     if (!user) return;
     const path = `settings/${user.uid}`;
     try {
       await setDoc(doc(db, 'settings', user.uid), {
-        monthlyGoal: goal,
+        ...newSettings,
         updatedAt: serverTimestamp()
       }, { merge: true });
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, path);
     }
+  };
+
+  const setMonthlyGoal = async (goal: number) => {
+    await updateSettings({ monthlyGoal: goal });
   };
 
   const addTrade = async (tradeData: Omit<Trade, 'id' | 'pnl' | 'rr'>) => {
@@ -129,14 +165,24 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const rr = calculateRR(tradeData.entry, tradeData.sl, tradeData.tp);
     
     try {
-      await setDoc(doc(db, path, id), {
+      const tradeObj: any = {
         ...tradeData,
         userId: user.uid,
         pnl,
         rr,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
-      });
+      };
+
+      await setDoc(doc(db, path, id), tradeObj);
+
+      // Career System Integration
+      // Fetch discipline score from DNA
+      const dnaSnap = await getDoc(doc(db, 'dna', user.uid));
+      const disciplineScore = dnaSnap.exists() ? dnaSnap.data().disciplineScore : 75; // Default to 75 if no DNA
+      
+      await updateXP(user.uid, { ...tradeObj, id }, disciplineScore);
+
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, `${path}/${id}`);
     }
@@ -173,7 +219,20 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   return (
-    <TradeContext.Provider value={{ trades, monthlyGoal, addTrade, deleteTrade, updateTrade, setMonthlyGoal, loading }}>
+    <TradeContext.Provider value={{ 
+      trades, 
+      monthlyGoal: settings.monthlyGoal, 
+      settings, 
+      careerProfile,
+      addTrade, 
+      deleteTrade, 
+      updateTrade, 
+      setMonthlyGoal, 
+      updateSettings, 
+      draftTrade, 
+      setDraftTrade, 
+      loading 
+    }}>
       {children}
     </TradeContext.Provider>
   );

@@ -46,8 +46,30 @@ service cloud.firestore {
     function isValidSettings(data) {
       return data.monthlyGoal is number &&
              data.updatedAt == request.time &&
-             data.keys().hasAll(['monthlyGoal', 'updatedAt']) &&
-             data.keys().size() == 2;
+             (data.keys().hasOnly(['monthlyGoal', 'updatedAt', 'dailyTradeLimit', 'dailyLossLimit', 'isLockdownEnabled']));
+    }
+
+    function isValidDNA(data) {
+      return data.disciplineScore is number &&
+             data.updatedAt == request.time;
+    }
+
+    function isValidCareerProfile(data) {
+      return data.level is number &&
+             data.currentXP is number &&
+             data.nextLevelXP is number &&
+             data.totalXP is number &&
+             data.streak is number &&
+             data.updatedAt == request.time;
+    }
+
+    function isValidChallenge(data) {
+      return data.id is string &&
+             data.title is string &&
+             data.target is number &&
+             data.current is number &&
+             data.xpReward is number &&
+             data.isCompleted is bool;
     }
 
     match /trades/{tradeId} {
@@ -80,6 +102,22 @@ service cloud.firestore {
     match /settings/{userId} {
       allow get: if isOwner(userId);
       allow create, update: if isOwner(userId) && isValidSettings(incoming());
+    }
+
+    match /dna/{userId} {
+      allow get: if isOwner(userId);
+      allow create, update: if isOwner(userId) && isValidDNA(incoming());
+    }
+
+    match /career/{userId} {
+      allow get: if isOwner(userId);
+      allow create, update: if isOwner(userId) && isValidCareerProfile(incoming());
+
+      match /challenges/{challengeId} {
+        allow get: if isOwner(userId);
+        allow list: if isOwner(userId);
+        allow create, update: if isOwner(userId) && isValidChallenge(incoming());
+      }
     }
   }
 }

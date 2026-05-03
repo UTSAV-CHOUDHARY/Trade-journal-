@@ -14,7 +14,8 @@ import {
   Target, 
   Info, 
   Crosshair,
-  Share2
+  Share2,
+  CheckCircle2
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { cn } from "../lib/utils";
@@ -26,23 +27,32 @@ export const TradeHistory = ({ onEdit }: { onEdit: (trade: Trade) => void }) => 
   const [filterStrategy, setFilterStrategy] = useState<StrategyType | 'All'>('All');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
+  const [deleteStep, setDeleteStep] = useState<'idle' | 'confirm'>('idle');
 
   const shareTrade = async (trade: Trade) => {
     const text = `Trade Report: ${trade.strategy} on ${trade.index}\nType: ${trade.type}\nPnL: ₹${trade.pnl.toLocaleString('en-IN')}\nRR: ${trade.rr}:1\nMood: ${trade.mood}\nLogged on Terminal v2.0`;
     
+    let shared = false;
     if (navigator.share) {
       try {
         await navigator.share({
           title: 'Alpha Trade Execution',
           text: text,
         });
+        shared = true;
       } catch (err) {
-        console.error('Error sharing:', err);
+        // If sharing is cancelled or fails (e.g. inside iframe), we skip and fallback to clipboard
+        console.warn('Native share failed or was cancelled', err);
       }
-    } else {
-      navigator.clipboard.writeText(text);
-      // Small feedback would be nice, but to keep it simple I'll just use a native alert for now as requested "functional"
-      alert('Trade details copied to clipboard!');
+    }
+
+    if (!shared) {
+      try {
+        await navigator.clipboard.writeText(text);
+        alert('Trade details copied to clipboard!');
+      } catch (err) {
+        console.error('Clipboard failed:', err);
+      }
     }
   };
 
@@ -173,7 +183,7 @@ export const TradeHistory = ({ onEdit }: { onEdit: (trade: Trade) => void }) => 
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[60] bg-white/20 dark:bg-slate-950/80 backdrop-blur-md flex items-end justify-center p-4 pb-20"
-            onClick={() => setSelectedTrade(null)}
+            onClick={() => { setSelectedTrade(null); setDeleteStep('idle'); }}
           >
             <motion.div
               initial={{ y: "100%" }}
@@ -263,15 +273,29 @@ export const TradeHistory = ({ onEdit }: { onEdit: (trade: Trade) => void }) => 
                   <Share2 size={18} />
                 </button>
                 <button 
-                  onClick={() => {
-                    if (confirm("Permanently delete this alpha record?")) {
-                      deleteTrade(selectedTrade.id);
-                      setSelectedTrade(null);
+                  onClick={async () => {
+                    if (deleteStep === 'idle') {
+                      setDeleteStep('confirm');
+                    } else {
+                      try {
+                        const tradeId = selectedTrade.id;
+                        setSelectedTrade(null);
+                        setDeleteStep('idle');
+                        await deleteTrade(tradeId);
+                      } catch (err) {
+                        console.error("Delete failed:", err);
+                        alert("Deletion unsuccessful. Network or permission error.");
+                      }
                     }
                   }}
-                  className="w-16 py-4 bg-rose-500/10 text-rose-500 rounded-3xl flex items-center justify-center hover:bg-rose-500/20 transition-all"
+                  className={cn(
+                    "w-16 py-4 rounded-3xl flex items-center justify-center transition-all active:scale-90",
+                    deleteStep === 'idle' 
+                      ? "bg-rose-500/10 text-rose-500 hover:bg-rose-500/20" 
+                      : "bg-rose-500 text-white shadow-lg shadow-rose-500/30"
+                  )}
                 >
-                  <Trash2 size={20} />
+                  {deleteStep === 'idle' ? <Trash2 size={20} /> : <CheckCircle2 size={20} />}
                 </button>
               </div>
             </motion.div>
